@@ -118,3 +118,8 @@ if DEBUG:
 else:
     STATIC_URL = 'http://natkan.mx/fbbot/static/'
     STATIC_ROOT = '/home3/natkanmx/public_html/fbbot/static'
+
+#FB
+PAGE_ACCESS_TOKEN = 'EAAZALn1kQMTkBAHMBUExv9b8J65aLMlx5lGnnKrQQR7TnOtpL8VcN1ZBAy1GPnw7ytp7vS219OnZB1Xdzh0jYhaMLH7XtuEFgZCrWvvKacdOriuX5r769V1dZAQmpe0a9WZBsQWvVRZAkYM000X23YuUZBCTm5eLz7NbAT9b5hqrsQZDZD'
+WEB_HOOK_URL = 'https://natkan.edu.mx/fbbot/webhook/'
+TEST_WEB_HOOK_URL = 'http://localhost:8000/webhook/'
