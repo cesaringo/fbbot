@@ -20,7 +20,10 @@ class WebhookView(viewsets.ViewSet):
         """WebHook Root"""
         data = request.data
         self.validate_request(data)
-        self.handle_request_field(data)
+        entry = data.get('entry', [])
+        for item in entry:
+            for messaging_item in item["messaging"]:
+                self.handle_request_field(messaging_item)
 
         # We return a HTTP 200
         return HttpResponse(status=200)
@@ -31,13 +34,14 @@ class WebhookView(viewsets.ViewSet):
         """
         pass
 
-    def handle_request_field(self, data):
-        if data.get('message'):
+    def handle_request_field(self, messaging_item):
+        if messaging_item.get('message'):
             """We sent a hello back message"""
             message = SendAPI()
             message.params = {
                 "recipient": {
-                    "id": data.get('sender')
+                    "id": messaging_item.get('sender'),
+                    #"phone_number": messaging_item.get('sender')
                 },
                 "message": {
                     "text": "hello, world!"
@@ -45,19 +49,19 @@ class WebhookView(viewsets.ViewSet):
             }
             message.send()
 
-        elif data.get('messaging_postbacks'):
+        elif messaging_item.get('messaging_postbacks'):
             pass
 
-        elif data.get('messaging_optins'):
+        elif messaging_item.get('messaging_optins'):
             pass
 
-        elif data.get('message_deliveries'):
+        elif messaging_item.get('message_deliveries'):
             pass
 
-        elif data.get('message_reads'):
+        elif messaging_item.get('message_reads'):
             pass
 
-        elif data.get('message_echoes'):
+        elif messaging_item.get('message_echoes'):
             pass
 
 
