@@ -10,4 +10,4 @@ class WebhookView(viewsets.ViewSet):
         if request.GET.get("hub.mode") and request.GET.get("hub.mode") == "subscribe" and (
                     request.GET.get("hub.verify_token") == "holamundo"):
                 return Response(str(challenge + challenge).replace('\"', ''))
-        return Response('Error, invalid token')
+        return Response('Error, invalid token2')
