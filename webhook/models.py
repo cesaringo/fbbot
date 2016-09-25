@@ -10,6 +10,7 @@ class Denuncia(models.Model):
     fecha_suceso= models.CharField(max_length=200, null=True, blank=True)
     lugar = models.CharField(max_length=200, null=True, blank=True)
     current_step = models.IntegerField()
+    closed = models.BooleanField(default=False)
 
 
 class File(models.Model):

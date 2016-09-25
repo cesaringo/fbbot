@@ -18,10 +18,12 @@ class WebhookView(viewsets.ViewSet):
         return Response('Error, invalid token. Update 1')
 
     def post(self, request, format=None):
+        #return HttpResponse(status=200)
         """WebHook Root"""
         data = request.data
         self.validate_request(data)
         entry = data.get('entry', [])
+
         for item in entry:
             for messaging_item in item["messaging"]:
                 self.handle_request_field(messaging_item)
@@ -40,10 +42,12 @@ class WebhookView(viewsets.ViewSet):
             message = self.init_message(messaging_item.get('sender')["id"])
             # Buscao si existe una denuncia activa para ese usuario
             try:
-                denuncia = Denuncia.objects.get(fb_user_id=messaging_item.get('sender')["id"])
+                denuncia = Denuncia.objects.get(fb_user_id=messaging_item.get('sender')["id"], closed=False)
 
             except Denuncia.DoesNotExist:
                 denuncia = None
+                self.typing_off(message.params["recipient"]["id"])
+                return 0
                 # Todo Hacer algo cuanod no hay denuncia activa y nos mandan un mensaje
 
             if denuncia is not None and denuncia.current_step == 1:
@@ -68,10 +72,15 @@ class WebhookView(viewsets.ViewSet):
                 denuncia.lugar = messaging_item.get("message")["text"]
                 denuncia.current_step += 1
                 denuncia.save()
-                return self.send_message_denuncia_step5(message)
+                return self.send_message_denuncia_step5(message, first_upload=True)
 
             if denuncia is not None and denuncia.current_step == 5:
-                pass
+                attachments = messaging_item.get("message")["attachments"]
+                files = []
+                for attachment in attachments:
+                    files.append(File(url=attachment["payload"]["url"], denuncia_id=denuncia.id))
+                File.objects.bulk_create(files)
+                return self.send_message_denuncia_step5(message)
 
             self.typing_off(message.params["recipient"]["id"])
             return 0
@@ -107,13 +116,30 @@ class WebhookView(viewsets.ViewSet):
                 message.send()
 
             elif payload["menu_item"] == 'denuncia':
-                    denuncia = Denuncia(fb_user_id=messaging_item.get('sender')["id"], current_step=1)
-                    denuncia.save()
-                    return self.send_message_denuncia_step1(message)
+                denuncia = Denuncia(fb_user_id=messaging_item.get('sender')["id"], current_step=1)
+                denuncia.save()
+                return self.send_message_denuncia_step1(message)
 
             elif payload["menu_item"] == 'asistencia':
                 message.params["message"] = {
                     "text": "Por favor escribe un tema sobre el que deseas sabes: Tránsito, asistencia legal, etc."
+                }
+                message.send()
+                self.typing_off(message.params["recipient"]["id"])
+
+            elif payload["menu_item"] == 'fin_button':
+                try:
+                    denuncia = Denuncia.objects.get(fb_user_id=messaging_item.get('sender')["id"], closed=False)
+
+                except Denuncia.DoesNotExist:
+                    denuncia = None
+                    # Todo Hacer algo cuanod no hay denuncia activa y nos mandan un mensaje
+
+                denuncia.current_step += 1
+                denuncia.closed = True
+                denuncia.save()
+                message.params["message"] = {
+                    "text": "Denuncía finalizada. Gracias por hacer tratar de hacer de México un mejor país."
                 }
                 message.send()
                 self.typing_off(message.params["recipient"]["id"])
@@ -185,11 +211,29 @@ class WebhookView(viewsets.ViewSet):
         self.typing_off(message.params["recipient"]["id"])
         return status
 
-    def send_message_denuncia_step5(self, message):
-        message.params["message"] = {
-            "text": "Adjunta los documentos que prueben tu denuncía. Toma en cuenta que denuncias sin pruebas verídicas"
-                    "no tendrán efecto."
-        }
+    def send_message_denuncia_step5(self, message, first_upload=False):
+        if first_upload:
+            message.params["message"] = {
+                "text": "Adjunta los documentos que prueben tu denuncía. Toma en cuenta que denuncias sin pruebas verídicas"
+                        "no tendrán efecto."
+            }
+        else:
+            message.params["message"] = {
+                "attachment": {
+                    "type": "template",
+                    "payload": {
+                        "template_type":"button",
+                        "text": "Finalizar o seguir agregando archivos",
+                        "buttons": [
+                            {
+                                "type": "postback",
+                                "title": "Finalizar",
+                                "payload": "{\"menu_item\": \"fin_button\"}"
+                            },
+                        ]
+                    }
+                }
+            }
         status = message.send()
         self.typing_off(message.params["recipient"]["id"])
         return status
