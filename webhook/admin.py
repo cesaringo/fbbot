@@ -3,7 +3,8 @@ from django.contrib import admin
 
 
 class DenunciaAdmin(admin.ModelAdmin):
-    pass
+    list_display = ("fb_user_id", "nombre_funcionario", "fecha", "lugar")
+
 
 class FileAdmin(admin.ModelAdmin):
     pass

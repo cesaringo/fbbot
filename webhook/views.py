@@ -6,7 +6,7 @@ from fbbot import settings
 import requests
 import json
 from .models import Denuncia, File
-
+from .serializers import *
 
 class WebhookView(viewsets.ViewSet):
 
@@ -350,3 +350,8 @@ class SendAPI:
 
 
 
+class DenunciasView(viewsets.ModelViewSet):
+    serializer_class = DenunciaSerializer
+    queryset = Denuncia.objects.all()
+    permission_classes = []
+    model = Denuncia
