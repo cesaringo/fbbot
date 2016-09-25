@@ -6,4 +6,8 @@ from rest_framework import viewsets
 class WebhookView(viewsets.ViewSet):
 
     def list(self, request, format=None):
-        return Response("holamundo")
+        challenge = request.data.get('hub_challenge')
+        verify_token = request.data.get('hub_verify_token')
+
+        if verify_token == 'holamundo':
+            return Response(challenge)
