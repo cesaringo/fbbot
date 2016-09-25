@@ -139,7 +139,7 @@ class WebhookView(viewsets.ViewSet):
                 denuncia.closed = True
                 denuncia.save()
                 message.params["message"] = {
-                    "text": "Denuncía finalizada. Gracias por hacer tratar de hacer de México un mejor país."
+                    "text": "Denuncía finalizada. Gracias por tratar de hacer de México un mejor país."
                 }
                 message.send()
                 self.typing_off(message.params["recipient"]["id"])
