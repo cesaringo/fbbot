@@ -5,6 +5,7 @@ from rest_framework.test import APIRequestFactory
 from fbbot import settings
 import requests
 import json
+from .models import Denuncia, File
 
 
 class WebhookView(viewsets.ViewSet):
@@ -14,7 +15,7 @@ class WebhookView(viewsets.ViewSet):
         if request.GET.get("hub.mode") and request.GET.get("hub.mode") == "subscribe" and (
                     request.GET.get("hub.verify_token") == "holamundo"):
                 return HttpResponse(challenge)
-        return Response('Error, invalid token2')
+        return Response('Error, invalid token. Update 1')
 
     def post(self, request, format=None):
         """WebHook Root"""
@@ -36,21 +37,86 @@ class WebhookView(viewsets.ViewSet):
 
     def handle_request_field(self, messaging_item):
         if messaging_item.get('message'):
-            """We sent a hello back message"""
-            message = SendAPI()
-            message.params = {
-                "recipient": {
-                    "id": messaging_item.get('sender'),
-                    #"phone_number": messaging_item.get('sender')
-                },
-                "message": {
-                    "text": "hello, world!"
-                }
-            }
-            message.send()
+            message = self.init_message(messaging_item.get('sender')["id"])
+            # Buscao si existe una denuncia activa para ese usuario
+            try:
+                denuncia = Denuncia.objects.get(fb_user_id=messaging_item.get('sender')["id"])
 
-        elif messaging_item.get('messaging_postbacks'):
-            pass
+            except Denuncia.DoesNotExist:
+                denuncia = None
+                # Todo Hacer algo cuanod no hay denuncia activa y nos mandan un mensaje
+
+            if denuncia is not None and denuncia.current_step == 1:
+                denuncia.nombre_funcionario = messaging_item.get("message")["text"]
+                denuncia.current_step += 1
+                denuncia.save()
+                return self.send_message_denuncia_step2(message)
+
+            if denuncia is not None and denuncia.current_step == 2:
+                denuncia.descripcion = messaging_item.get("message")["text"]
+                denuncia.current_step += 1
+                denuncia.save()
+                return self.send_message_denuncia_step3(message)
+
+            if denuncia is not None and denuncia.current_step == 3:
+                denuncia.fecha_suceso = messaging_item.get("message")["text"]
+                denuncia.current_step += 1
+                denuncia.save()
+                return self.send_message_denuncia_step4(message)
+
+            if denuncia is not None and denuncia.current_step == 4:
+                denuncia.lugar = messaging_item.get("message")["text"]
+                denuncia.current_step += 1
+                denuncia.save()
+                return self.send_message_denuncia_step5(message)
+
+            if denuncia is not None and denuncia.current_step == 5:
+                pass
+
+            self.typing_off(message.params["recipient"]["id"])
+            return 0
+
+        elif messaging_item.get('postback'):
+            message = self.init_message(messaging_item.get('sender')["id"])
+
+            # We need to read what button was tapped
+            payload = json.loads(messaging_item["postback"]["payload"])
+            if payload["menu_item"] == 'start_button':
+                message.params["message"] = {
+                    "attachment": {
+                        "type": "template",
+                        "payload": {
+                            "template_type": "button",
+                            "text": "¡Hola!. Soy tu asistente virtual que te ayudará a realizar una de las siguientes opciones:",
+                            "buttons": [
+                                {
+                                    "type": "postback",
+                                    "title": "Denuncia",
+                                    "payload": "{\"menu_item\": \"denuncia\"}"
+                                },
+
+                                {
+                                    "type": "postback",
+                                    "title": "Asistencia",
+                                    "payload": "{\"menu_item\": \"asistencia\"}"
+                                }
+                            ]
+                        }
+                    }
+                }
+                message.send()
+
+            elif payload["menu_item"] == 'denuncia':
+                    denuncia = Denuncia(fb_user_id=messaging_item.get('sender')["id"], current_step=1)
+                    denuncia.save()
+                    return self.send_message_denuncia_step1(message)
+
+            elif payload["menu_item"] == 'asistencia':
+                message.params["message"] = {
+                    "text": "Por favor escribe un tema sobre el que deseas sabes: Tránsito, asistencia legal, etc."
+                }
+                message.send()
+                self.typing_off(message.params["recipient"]["id"])
 
         elif messaging_item.get('messaging_optins'):
             pass
@@ -64,7 +130,87 @@ class WebhookView(viewsets.ViewSet):
         elif messaging_item.get('message_echoes'):
             pass
 
+    @staticmethod
+    def typing_on(recipient):
+        typing_signal = SendAPI()
+        typing_signal.params = {
+            "recipient": {
+                "id": recipient
+            },
+            "sender_action": "typing_on"
+        }
+        typing_signal.send()
 
+    @staticmethod
+    def typing_off(recipient):
+        typing_signal = SendAPI()
+        typing_signal.params = {
+            "recipient": {
+                "id": recipient
+            },
+            "sender_action": "typing_off"
+        }
+        typing_signal.send()
+
+    def send_message_denuncia_step1(self, message):
+        message.params["message"] = {
+            "text": "Por favor comienza escribiendo el nombre del funcionario "
+                    "o institución que deseas denunciar:"
+        }
+        message.send()
+        self.typing_off(message.params["recipient"]["id"])
+
+    def send_message_denuncia_step2(self, message):
+        message.params["message"] = {
+            "text": "Escribe el motivo de la denuncia:"
+        }
+        status = message.send()
+        self.typing_off(message.params["recipient"]["id"])
+        return status
+
+
+    def send_message_denuncia_step3(self, message):
+        message.params["message"] = {
+            "text": "Fecha en que se presentó el acontecimiento:"
+        }
+        status = message.send()
+        self.typing_off(message.params["recipient"]["id"])
+        return status
+
+    def send_message_denuncia_step4(self, message):
+        message.params["message"] = {
+            "text": "¿Dónde sucedió?"
+        }
+        status = message.send()
+        self.typing_off(message.params["recipient"]["id"])
+        return status
+
+    def send_message_denuncia_step5(self, message):
+        message.params["message"] = {
+            "text": "Adjunta los documentos que prueben tu denuncía. Toma en cuenta que denuncias sin pruebas verídicas"
+                    "no tendrán efecto."
+        }
+        status = message.send()
+        self.typing_off(message.params["recipient"]["id"])
+        return status
+
+    def send_message_denuncia_step6(self, message):
+        message.params["message"] = {
+            "text": "Gracías por contribuir a un país mejor."
+        }
+        status = message.send()
+        self.typing_off(message.params["recipient"]["id"])
+        return status
+
+    def init_message(self, recipient):
+        self.typing_on(recipient)
+        message = SendAPI()
+        message.params = {
+            "recipient": {
+                "id": recipient
+            }
+        }
+        return message
 
 
 class ThreadSettings:
@@ -92,7 +238,7 @@ class ThreadSettings:
             "thread_state": "new_thread",
             "call_to_actions":
                 [
-                    {"payload": "USER_DEFINED_PAYLOAD"}
+                    {"payload": "{\"menu_item\": \"start_button\"}"}
                 ]
         }
         return self.send()
@@ -108,7 +254,7 @@ class ThreadSettings:
         self.params = {
             "setting_type": "greeting",
             "greeting": {
-                "text": "Hi {{user_first_name}}, welcome to this bot."
+                "text": "Hola {{user_first_name}}, bienvenido al sistema de denuncia ciudadana y consulta de información."
             }
         }
         return self.send()
@@ -121,14 +267,14 @@ class ThreadSettings:
                 "call_to_actions": [
                     {
                         "type": "postback",
-                        "title": "Help",
-                        "payload": "DEVELOPER_DEFINED_PAYLOAD_FOR_HELP"
+                        "title": "Denuncia",
+                        "payload": "{\"menu_item\": \"denuncia\"}"
                     },
 
                     {
-                        "type": "web_url",
-                        "title": "View Website",
-                        "url": "http://google.com/"
+                        "type": "postback",
+                        "title": "Asistencia",
+                        "payload": "{\"menu_item\": \"asistencia\"}"
                     }
                 ]
             }
@@ -157,17 +303,6 @@ class SendAPI:
 
     def set_params(self, params_name, params_value):
         self.params[params_name] = params_value
-
-
-
-class MessageReceivedCallback:
-    """
-    This callback will occur when a message has been sent to your page.
-    You may receive text messages or messages with attachments (image, audio, video, file or location).
-    """
-
-    pass
-
 
 
 

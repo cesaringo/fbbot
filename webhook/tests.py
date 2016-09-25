@@ -23,19 +23,19 @@ class FBPlatformTests(APITestCase):
 
     def test_handle_message(self):
         fake_data = {
-            "object":"page",
-            "entry":[
+            "object": "page",
+            "entry": [
                 {
-                    "id":"PAGE_ID",
-                    "time":1458692752478,
-                    "messaging":[
+                    "id": "PAGE_ID",
+                    "time": 1458692752478,
+                    "messaging": [
                         {
-                            "sender":{
-                                "id":"100000500686974"
+                            "sender": {
+                                "id": "100000500686974"
                             },
 
-                            "recipient":{
-                                "id":"PAGE_ID"
+                            "recipient": {
+                                "id": "PAGE_ID"
                             },
 
                             "message": {

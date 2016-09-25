@@ -30,7 +30,7 @@ INSTALLED_APPS = [
     'webhook'
 ]
 
-MIDDLEWARE = [
+MIDDLEWARE_CLASSES = [
     'django.middleware.gzip.GZipMiddleware',
     'debug_toolbar.middleware.DebugToolbarMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -120,6 +120,6 @@ else:
     STATIC_ROOT = '/home3/natkanmx/public_html/fbbot/static'
 
 #FB
-PAGE_ACCESS_TOKEN = 'EAAZALn1kQMTkBAHMBUExv9b8J65aLMlx5lGnnKrQQR7TnOtpL8VcN1ZBAy1GPnw7ytp7vS219OnZB1Xdzh0jYhaMLH7XtuEFgZCrWvvKacdOriuX5r769V1dZAQmpe0a9WZBsQWvVRZAkYM000X23YuUZBCTm5eLz7NbAT9b5hqrsQZDZD'
+PAGE_ACCESS_TOKEN = 'EAAZALn1kQMTkBAOuUImr3oT4OCtmKlH7ct3hGyC4713gT8ZB9q1Ox29ZBeG8ivg2WV141SiBzZB9ZA5fFfHjHhhED7HumdXmAbANbzUt42uNyhGwDlGdihpY76yQV2uY3hfAlZAc3XFZB1OgVTccaYZCpe7kuDgZAaBiXUnVmN4URxgZDZD'
 WEB_HOOK_URL = 'https://natkan.edu.mx/fbbot/webhook/'
 TEST_WEB_HOOK_URL = 'http://localhost:8000/webhook/'
